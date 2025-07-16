@@ -292,7 +292,7 @@ const questions = [
         type: 'multiple-choice',
         question: "Qual destas cores NÃO é mencionada como uma cor das flores na primavera?",
         hint: "O texto lista três cores de flores que o Sr. Tim vê.",
-        relatedText: "From 'A Colorful Year with Mr. Tim' - Spring section: In spring, Mr. Tim loves to see flowers. He sees pink, yellow, and purple flowers everywhere. The grass is green, and the sky is blue."
+        relatedText: "From 'A Colorful Year with Mr. Tim' - Spring section: In spring, Mr. Tim loves to see flowers. He sees pink, yellow, and purple flowers everywhere. The grass is green, and the sky is blue.",
         options: [
             { text: "blue", correct: true, explanation: "Correto. O texto menciona flores 'pink, yellow, and purple'. 'Blue' é mencionado em referência ao céu ('blue sky')." },
             { text: "pink", correct: false, explanation: "Incorreto. 'Pink' é uma das cores das flores mencionadas." },
