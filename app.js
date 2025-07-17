@@ -549,12 +549,35 @@ function calculateResults() {
 }
 
 function saveTestResults(results, duration) {
+    // Salvar no localStorage (backup local)
     const testResults = JSON.parse(localStorage.getItem('testResults') || '[]');
     testResults.push({
         ...results,
         duration: duration
     });
     localStorage.setItem('testResults', JSON.stringify(testResults));
+    
+    // Salvar no Firebase
+    const resultData = {
+        ...results,
+        duration: duration,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    };
+    
+    // Gerar um ID único para o resultado
+    const newResultRef = database.ref('testResults').push();
+    
+    // Salvar no Firebase
+    newResultRef.set(resultData)
+        .then(() => {
+            console.log('Resultado salvo no Firebase com sucesso!');
+            // Adicionar indicador visual de salvamento
+            showSaveStatus('success');
+        })
+        .catch((error) => {
+            console.error('Erro ao salvar no Firebase:', error);
+            showSaveStatus('error');
+        });
 }
 
 function showResults(results, duration) {
@@ -655,4 +678,41 @@ function displayPreviousResults(results) {
 
 function printResults() {
     window.print();
+}
+
+// Função para mostrar status de salvamento
+function showSaveStatus(status) {
+    const statusDiv = document.createElement('div');
+    statusDiv.className = `save-status ${status}`;
+    
+    if (status === 'success') {
+        statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> Resultado salvo com sucesso na nuvem!';
+        statusDiv.style.backgroundColor = '#4caf50';
+    } else {
+        statusDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Erro ao salvar. Resultado salvo apenas localmente.';
+        statusDiv.style.backgroundColor = '#f44336';
+    }
+    
+    statusDiv.style.cssText += `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 5px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: slideIn 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(statusDiv);
+    
+    // Remover após 5 segundos
+    setTimeout(() => {
+        statusDiv.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => statusDiv.remove(), 300);
+    }, 5000);
 }

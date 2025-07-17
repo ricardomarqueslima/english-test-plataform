@@ -170,6 +170,28 @@
             }
         }
     </style>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <!-- Firebase Configuration -->
+    <script>
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBUldtIAGUyPZDEQ95IUSscsGeSq7uCBzE",
+            authDomain: "english-test-plataform.firebaseapp.com",
+            databaseURL: "https://english-test-plataform-default-rtdb.firebaseio.com",
+            projectId: "english-test-plataform",
+            storageBucket: "english-test-plataform.firebasestorage.app",
+            messagingSenderId: "150025312194",
+            appId: "1:150025312194:web:31d4eba6f270d6bbe6e85b"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+    </script>
 </head>
 <body>
     <div class="admin-container">
@@ -189,6 +211,9 @@
                 <button class="btn btn-danger" onclick="clearAllResults()">
                     <i class="fas fa-trash"></i> Limpar Dados
                 </button>
+                <button class="btn btn-secondary" onclick="logout()" style="background: #6c757d;">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </button>
             </div>
 
             <div class="stats-grid" id="stats-grid">
@@ -204,14 +229,65 @@
     <script>
         // Load results on page load
         document.addEventListener('DOMContentLoaded', () => {
+            checkAuthentication();
             loadResults();
         });
 
-        function loadResults() {
-            const testResults = JSON.parse(localStorage.getItem('testResults') || '[]');
+        function checkAuthentication() {
+            const isAuthenticated = sessionStorage.getItem('adminAuthenticated');
+            const loginTime = sessionStorage.getItem('adminLoginTime');
             
-            displayStats(testResults);
-            displayResultsTable(testResults);
+            if (isAuthenticated !== 'true' || !loginTime) {
+                window.location.href = 'admin-login.html';
+                return;
+            }
+            
+            // Verificar se a sessão não expirou (4 horas)
+            const fourHours = 4 * 60 * 60 * 1000;
+            const currentTime = new Date().getTime();
+            
+            if (currentTime - parseInt(loginTime) > fourHours) {
+                // Sessão expirada
+                sessionStorage.removeItem('adminAuthenticated');
+                sessionStorage.removeItem('adminLoginTime');
+                alert('Sessão expirada. Faça login novamente.');
+                window.location.href = 'admin-login.html';
+                return;
+            }
+        }
+
+        function loadResults() {
+            // Mostrar loading
+            document.getElementById('stats-grid').innerHTML = '<div class="no-results">Carregando resultados...</div>';
+            document.getElementById('results-container').innerHTML = '<div class="no-results">Carregando...</div>';
+            
+            // Carregar do Firebase
+            database.ref('testResults').once('value')
+                .then((snapshot) => {
+                    const firebaseResults = [];
+                    snapshot.forEach((childSnapshot) => {
+                        const result = childSnapshot.val();
+                        result.id = childSnapshot.key; // Adicionar ID do Firebase
+                        firebaseResults.push(result);
+                    });
+                    
+                    // Ordenar por data mais recente primeiro
+                    firebaseResults.sort((a, b) => {
+                        const dateA = new Date(a.completedAt || a.timestamp);
+                        const dateB = new Date(b.completedAt || b.timestamp);
+                        return dateB - dateA;
+                    });
+                    
+                    displayStats(firebaseResults);
+                    displayResultsTable(firebaseResults);
+                })
+                .catch((error) => {
+                    console.error('Erro ao carregar do Firebase:', error);
+                    // Fallback para localStorage
+                    const localResults = JSON.parse(localStorage.getItem('testResults') || '[]');
+                    displayStats(localResults);
+                    displayResultsTable(localResults);
+                });
         }
 
         function displayStats(results) {
@@ -223,9 +299,9 @@
             }
 
             const totalTests = results.length;
-            const averageScore = Math.round(results.reduce((sum, result) => sum + result.score, 0) / totalTests);
-            const highestScore = Math.max(...results.map(r => r.score));
-            const passedCount = results.filter(r => r.score >= 70).length;
+            const averageScore = (results.reduce((sum, result) => sum + result.score, 0) / totalTests).toFixed(1);
+            const highestScore = Math.max(...results.map(r => r.score)).toFixed(1);
+            const passedCount = results.filter(r => r.score >= 7).length;
             const averageDuration = Math.round(results.reduce((sum, result) => sum + result.duration, 0) / totalTests);
 
             statsGrid.innerHTML = `
@@ -234,16 +310,16 @@
                     <div class="stat-label">Total de Provas</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">${averageScore}%</div>
+                    <div class="stat-number">${averageScore}</div>
                     <div class="stat-label">Média Geral</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">${highestScore}%</div>
+                    <div class="stat-number">${highestScore}</div>
                     <div class="stat-label">Maior Nota</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">${passedCount}</div>
-                    <div class="stat-label">Aprovados (≥70%)</div>
+                    <div class="stat-label">Aprovados (≥7.0)</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number">${averageDuration}min</div>
@@ -278,7 +354,7 @@
                             <tr>
                                 <td>${result.user.fullName}</td>
                                 <td>${result.user.email}</td>
-                                <td class="${getScoreClass(result.score)}">${result.score}%</td>
+                                <td class="${getScoreClass(result.score)}">${result.score.toFixed(1)}</td>
                                 <td>${result.correctCount}/${result.totalQuestions}</td>
                                 <td>${result.duration} min</td>
                                 <td>${new Date(result.completedAt).toLocaleString('pt-BR')}</td>
@@ -297,9 +373,9 @@
         }
 
         function getScoreClass(score) {
-            if (score >= 90) return 'score-excellent';
-            if (score >= 80) return 'score-good';
-            if (score >= 70) return 'score-fair';
+            if (score >= 9) return 'score-excellent';
+            if (score >= 8) return 'score-good';
+            if (score >= 7) return 'score-fair';
             return 'score-poor';
         }
 
@@ -333,7 +409,7 @@
                         <h1>Resultado Detalhado</h1>
                         <p><strong>Nome:</strong> ${result.user.fullName}</p>
                         <p><strong>Email:</strong> ${result.user.email}</p>
-                        <p><strong>Nota:</strong> ${result.score}% (${result.correctCount}/${result.totalQuestions} corretas)</p>
+                        <p><strong>Nota:</strong> ${result.score.toFixed(1)} (${result.correctCount}/${result.totalQuestions} corretas)</p>
                         <p><strong>Tempo:</strong> ${result.duration} minutos</p>
                         <p><strong>Data:</strong> ${new Date(result.completedAt).toLocaleString('pt-BR')}</p>
                         <button class="no-print" onclick="window.print()">Imprimir</button>
@@ -409,10 +485,28 @@
         function clearAllResults() {
             if (confirm('Tem certeza que deseja apagar TODOS os resultados? Esta ação não pode ser desfeita.')) {
                 if (confirm('Confirmação final: Todos os dados serão perdidos permanentemente. Continuar?')) {
-                    localStorage.removeItem('testResults');
-                    loadResults();
-                    alert('Todos os resultados foram removidos.');
+                    // Limpar Firebase
+                    database.ref('testResults').remove()
+                        .then(() => {
+                            console.log('Dados removidos do Firebase');
+                            // Limpar localStorage também
+                            localStorage.removeItem('testResults');
+                            loadResults();
+                            alert('Todos os resultados foram removidos.');
+                        })
+                        .catch((error) => {
+                            console.error('Erro ao limpar Firebase:', error);
+                            alert('Erro ao limpar os dados. Tente novamente.');
+                        });
                 }
+            }
+        }
+
+        function logout() {
+            if (confirm('Tem certeza que deseja sair do painel administrativo?')) {
+                sessionStorage.removeItem('adminAuthenticated');
+                sessionStorage.removeItem('adminLoginTime');
+                window.location.href = 'admin-login.html';
             }
         }
     </script>
