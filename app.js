@@ -35,6 +35,36 @@ document.addEventListener('DOMContentLoaded', () => {
     checkIfAlreadyTaken();
 });
 
+// Função para embaralhar array (algoritmo Fisher-Yates)
+function shuffleArray(array) {
+    const shuffled = [...array]; // Criar cópia para não modificar o original
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
+
+// Função para embaralhar as opções das questões de múltipla escolha
+function shuffleQuestionOptions() {
+    questions.forEach(question => {
+        if (question.type === 'multiple-choice' && question.options) {
+            // Embaralhar as opções mantendo o mapeamento de qual é a correta
+            question.options = shuffleArray(question.options);
+        }
+        
+        if (question.type === 'drag-drop' && question.options) {
+            // Embaralhar as opções de arrastar e soltar
+            question.options = shuffleArray(question.options);
+        }
+        
+        if (question.type === 'fill-blank' && question.options) {
+            // Embaralhar as opções de preenchimento
+            question.options = shuffleArray(question.options);
+        }
+    });
+}
+
 function initializeApp() {
     loginForm.addEventListener('submit', handleLogin);
     prevBtn.addEventListener('click', goToPreviousQuestion);
@@ -89,6 +119,10 @@ function handleLogin(e) {
     
     if (fullName && email) {
         currentUser = { fullName, email, testDate: new Date().toISOString() };
+        
+        // Embaralhar as alternativas das questões de múltipla escolha para este usuário
+        shuffleQuestionOptions();
+        
         showScreen('instructions-screen');
     }
 }
@@ -502,7 +536,7 @@ function calculateResults() {
         });
     });
     
-    const score = Math.round((correctCount / questions.length) * 100);
+    const score = Math.round((correctCount / questions.length) * 10 * 100) / 100; // Escala 0-10 com 2 decimais
     
     return {
         user: currentUser,
@@ -526,22 +560,37 @@ function saveTestResults(results, duration) {
 function showResults(results, duration) {
     showScreen('results-screen');
     
-    finalScore.textContent = `${results.score}%`;
+    finalScore.textContent = results.score.toFixed(1);
     
     let message = '';
-    if (results.score >= 90) {
-        message = 'Excelente! Parabéns pelo ótimo desempenho!';
-    } else if (results.score >= 80) {
-        message = 'Muito bom! Você teve um bom desempenho!';
-    } else if (results.score >= 70) {
-        message = 'Bom trabalho! Continue estudando para melhorar!';
-    } else if (results.score >= 60) {
-        message = 'Resultado satisfatório. Há espaço para melhorias!';
+    let csLewisQuote = '';
+    
+    if (results.score === 10) {
+        message = '🏆 PERFEITO! Nota máxima! Você demonstrou excelência absoluta no domínio da língua inglesa!';
+        csLewisQuote = '"You are never too old to set another goal or to dream a new dream." - C.S. Lewis';
+    } else if (results.score >= 9) {
+        message = '🌟 EXCELENTE! Parabéns pelo resultado extraordinário! Seu domínio do inglês é impressionante!';
+        csLewisQuote = '"Courage, dear heart." - C.S. Lewis';
+    } else if (results.score >= 8) {
+        message = '✨ MUITO BOM! Excelente desempenho! Você está no caminho certo para a fluência!';
+        csLewisQuote = '"What you see and what you hear depends a great deal on where you are standing." - C.S. Lewis';
+    } else if (results.score >= 7) {
+        message = '👏 PARABÉNS! Você foi aprovado! Continue dedicando-se aos estudos!';
+        csLewisQuote = '"We are what we believe we are." - C.S. Lewis';
+    } else if (results.score >= 5) {
+        message = '📚 Continue estudando! Você está progredindo, mas ainda há espaço para melhorias.';
+        csLewisQuote = '"Hardships often prepare ordinary people for an extraordinary destiny." - C.S. Lewis';
     } else {
-        message = 'Continue estudando! Você pode melhorar muito!';
+        message = '💪 Não desista! Todo expert já foi iniciante. Continue praticando!';
+        csLewisQuote = '"There are far, far better things ahead than any we leave behind." - C.S. Lewis';
     }
     
-    scoreMessage.textContent = message;
+    scoreMessage.innerHTML = `
+        <div style="margin-bottom: 20px;">${message}</div>
+        <div style="font-style: italic; color: #667eea; border-top: 2px solid #667eea; padding-top: 15px; margin-top: 15px;">
+            ${csLewisQuote}
+        </div>
+    `;
     testDuration.textContent = `Tempo utilizado: ${duration} minutos`;
     
     // Show detailed results
@@ -570,8 +619,13 @@ function showResults(results, duration) {
 }
 
 function displayPreviousResults(results) {
-    finalScore.textContent = `${results.score}%`;
-    scoreMessage.textContent = 'Você já realizou esta prova anteriormente.';
+    finalScore.textContent = results.score.toFixed(1);
+    scoreMessage.innerHTML = `
+        <div>Você já realizou esta prova anteriormente.</div>
+        <div style="margin-top: 15px; font-style: italic; color: #667eea;">
+            "Once a king or queen of Narnia, always a king or queen of Narnia." - C.S. Lewis
+        </div>
+    `;
     testDuration.textContent = `Tempo utilizado: ${results.duration} minutos`;
     
     detailedResults.innerHTML = `
