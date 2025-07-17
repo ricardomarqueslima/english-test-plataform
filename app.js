@@ -3,9 +3,13 @@ let currentUser = null;
 let currentQuestionIndex = 0;
 let userAnswers = [];
 let testStartTime = null;
+let testTimer = null;
+let timeRemaining = 7200; // 2 hours in seconds
+let hasStartedTest = false;
 
 // DOM Elements
 const loginScreen = document.getElementById('login-screen');
+const instructionsScreen = document.getElementById('instructions-screen');
 const testScreen = document.getElementById('test-screen');
 const resultsScreen = document.getElementById('results-screen');
 const loginForm = document.getElementById('login-form');
@@ -18,11 +22,17 @@ const finishBtn = document.getElementById('finish-btn');
 const finalScore = document.getElementById('final-score');
 const scoreMessage = document.getElementById('score-message');
 const detailedResults = document.getElementById('detailed-results');
-const restartBtn = document.getElementById('restart-btn');
+const testDuration = document.getElementById('test-duration');
+const timerDisplay = document.getElementById('timer');
+const understandRules = document.getElementById('understand-rules');
+const startTestBtn = document.getElementById('start-test');
+const backToLoginBtn = document.getElementById('back-to-login');
+const printResultsBtn = document.getElementById('print-results');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
+    checkIfAlreadyTaken();
 });
 
 function initializeApp() {
@@ -30,10 +40,47 @@ function initializeApp() {
     prevBtn.addEventListener('click', goToPreviousQuestion);
     nextBtn.addEventListener('click', goToNextQuestion);
     finishBtn.addEventListener('click', finishTest);
-    restartBtn.addEventListener('click', restartTest);
+    startTestBtn.addEventListener('click', startTest);
+    backToLoginBtn.addEventListener('click', backToLogin);
+    printResultsBtn.addEventListener('click', printResults);
+    understandRules.addEventListener('change', toggleStartButton);
+    
+    // Anti-cheat measures
+    window.addEventListener('beforeunload', handlePageUnload);
+    window.addEventListener('blur', handleWindowBlur);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Disable right-click and certain keys during test
+    document.addEventListener('contextmenu', (e) => {
+        if (hasStartedTest) e.preventDefault();
+    });
+    
+    document.addEventListener('keydown', (e) => {
+        if (hasStartedTest) {
+            // Disable F12, Ctrl+Shift+I, Ctrl+U, F5, Ctrl+R
+            if (e.key === 'F12' || 
+                (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                (e.ctrlKey && e.key === 'u') ||
+                e.key === 'F5' ||
+                (e.ctrlKey && e.key === 'r')) {
+                e.preventDefault();
+            }
+        }
+    });
 }
 
-// Login Handler
+function checkIfAlreadyTaken() {
+    const testResults = localStorage.getItem('testResults');
+    if (testResults) {
+        const results = JSON.parse(testResults);
+        if (results.length > 0) {
+            // Test already taken, show results
+            showScreen('results-screen');
+            displayPreviousResults(results[results.length - 1]);
+        }
+    }
+}
+
 function handleLogin(e) {
     e.preventDefault();
     
@@ -42,11 +89,88 @@ function handleLogin(e) {
     
     if (fullName && email) {
         currentUser = { fullName, email, testDate: new Date().toISOString() };
-        userAnswers = new Array(questions.length).fill(null);
-        testStartTime = new Date();
+        showScreen('instructions-screen');
+    }
+}
+
+function toggleStartButton() {
+    startTestBtn.disabled = !understandRules.checked;
+}
+
+function startTest() {
+    hasStartedTest = true;
+    userAnswers = new Array(questions.length).fill(null);
+    testStartTime = new Date();
+    
+    showScreen('test-screen');
+    startTimer();
+    loadQuestion(0);
+}
+
+function backToLogin() {
+    showScreen('login-screen');
+    document.getElementById('fullName').value = '';
+    document.getElementById('email').value = '';
+    understandRules.checked = false;
+    toggleStartButton();
+}
+
+function startTimer() {
+    testTimer = setInterval(() => {
+        timeRemaining--;
+        updateTimerDisplay();
         
-        showScreen('test-screen');
-        loadQuestion(0);
+        if (timeRemaining <= 0) {
+            autoFinishTest();
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay() {
+    const hours = Math.floor(timeRemaining / 3600);
+    const minutes = Math.floor((timeRemaining % 3600) / 60);
+    const seconds = timeRemaining % 60;
+    
+    timerDisplay.textContent = 
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    
+    // Change color when time is running low
+    if (timeRemaining <= 300) { // 5 minutes
+        timerDisplay.style.color = '#ff0000';
+        timerDisplay.style.fontWeight = 'bold';
+    } else if (timeRemaining <= 600) { // 10 minutes
+        timerDisplay.style.color = '#ff6600';
+    }
+}
+
+function autoFinishTest() {
+    alert('Tempo esgotado! A prova será finalizada automaticamente.');
+    finishTest();
+}
+
+// Anti-cheat functions
+function handlePageUnload(e) {
+    if (hasStartedTest && !confirm('Tem certeza que deseja sair? A prova será encerrada!')) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+    }
+    if (hasStartedTest) {
+        finishTest();
+    }
+}
+
+function handleWindowBlur() {
+    if (hasStartedTest) {
+        alert('Você saiu da janela da prova! A prova será encerrada por motivos de segurança.');
+        finishTest();
+    }
+}
+
+function handleVisibilityChange() {
+    if (hasStartedTest && document.hidden) {
+        alert('Você mudou de aba! A prova será encerrada por motivos de segurança.');
+        finishTest();
     }
 }
 
@@ -316,12 +440,17 @@ function goToNextQuestion() {
 
 // Test Completion
 function finishTest() {
+    if (testTimer) {
+        clearInterval(testTimer);
+    }
+    
+    hasStartedTest = false;
     const testEndTime = new Date();
     const duration = Math.floor((testEndTime - testStartTime) / 1000 / 60); // minutes
     
     const results = calculateResults();
     
-    // Save to localStorage for admin access
+    // Save to localStorage
     saveTestResults(results, duration);
     
     showResults(results, duration);
@@ -340,11 +469,20 @@ function calculateResults() {
         switch(question.type) {
             case 'multiple-choice':
                 const selectedOption = question.options[userAnswer];
-                isCorrect = selectedOption && selectedOption.correct;
-                correctAnswer = question.options.find(opt => opt.correct).text;
-                explanation = question.options.find(opt => opt.correct).explanation;
+                if (selectedOption) {
+                    isCorrect = selectedOption.correct;
+                    explanation = selectedOption.explanation;
+                }
+                const correctOption = question.options.find(opt => opt.correct);
+                correctAnswer = correctOption ? correctOption.text : '';
                 break;
+                
             case 'drag-drop':
+                isCorrect = userAnswer === question.correctAnswer || userAnswer === question.correctSuffix;
+                correctAnswer = question.correctAnswer || question.correctSuffix;
+                explanation = question.explanation;
+                break;
+                
             case 'fill-blank':
                 isCorrect = userAnswer && userAnswer.toLowerCase() === question.correctAnswer.toLowerCase();
                 correctAnswer = question.correctAnswer;
@@ -355,104 +493,112 @@ function calculateResults() {
         if (isCorrect) correctCount++;
         
         detailedResults.push({
+            questionNumber: index + 1,
             question: question.question,
             userAnswer: userAnswer || 'Não respondida',
-            correctAnswer,
-            isCorrect,
-            explanation
+            correctAnswer: correctAnswer,
+            isCorrect: isCorrect,
+            explanation: explanation
         });
     });
     
+    const score = Math.round((correctCount / questions.length) * 100);
+    
     return {
-        score: correctCount,
-        total: questions.length,
-        percentage: Math.round((correctCount / questions.length) * 100),
-        detailedResults
+        user: currentUser,
+        score: score,
+        correctCount: correctCount,
+        totalQuestions: questions.length,
+        detailedResults: detailedResults,
+        completedAt: new Date().toISOString()
     };
 }
 
 function saveTestResults(results, duration) {
-    const testResult = {
-        user: currentUser,
-        results,
-        duration,
-        timestamp: new Date().toISOString()
-    };
-    
-    // Get existing results
-    const existingResults = JSON.parse(localStorage.getItem('testResults') || '[]');
-    existingResults.push(testResult);
-    localStorage.setItem('testResults', JSON.stringify(existingResults));
+    const testResults = JSON.parse(localStorage.getItem('testResults') || '[]');
+    testResults.push({
+        ...results,
+        duration: duration
+    });
+    localStorage.setItem('testResults', JSON.stringify(testResults));
 }
 
 function showResults(results, duration) {
-    finalScore.textContent = results.score;
+    showScreen('results-screen');
     
-    // Score message based on percentage
+    finalScore.textContent = `${results.score}%`;
+    
     let message = '';
-    if (results.percentage >= 90) {
-        message = 'Excelente! Você acertou ' + results.percentage + '% das questões!';
-    } else if (results.percentage >= 70) {
-        message = 'Muito bem! Você acertou ' + results.percentage + '% das questões!';
-    } else if (results.percentage >= 50) {
-        message = 'Bom trabalho! Você acertou ' + results.percentage + '% das questões!';
+    if (results.score >= 90) {
+        message = 'Excelente! Parabéns pelo ótimo desempenho!';
+    } else if (results.score >= 80) {
+        message = 'Muito bom! Você teve um bom desempenho!';
+    } else if (results.score >= 70) {
+        message = 'Bom trabalho! Continue estudando para melhorar!';
+    } else if (results.score >= 60) {
+        message = 'Resultado satisfatório. Há espaço para melhorias!';
     } else {
-        message = 'Continue estudando! Você acertou ' + results.percentage + '% das questões.';
+        message = 'Continue estudando! Você pode melhorar muito!';
     }
     
     scoreMessage.textContent = message;
+    testDuration.textContent = `Tempo utilizado: ${duration} minutos`;
     
-    // Render detailed results
-    detailedResults.innerHTML = '';
-    results.detailedResults.forEach((result, index) => {
-        const resultDiv = document.createElement('div');
-        resultDiv.className = `result-item ${result.isCorrect ? 'correct' : 'incorrect'}`;
-        
-        resultDiv.innerHTML = `
-            <div class="question-review">
-                <strong>Questão ${index + 1}:</strong> ${result.question.substring(0, 100)}...
-            </div>
-            <div class="user-answer">
-                <strong>Sua resposta:</strong> ${result.userAnswer}
-            </div>
-            <div class="correct-answer">
-                <strong>Resposta correta:</strong> ${result.correctAnswer}
-            </div>
-            <div class="explanation">
-                <strong>Explicação:</strong> ${result.explanation}
-            </div>
-        `;
-        
-        detailedResults.appendChild(resultDiv);
-    });
-    
-    showScreen('results-screen');
+    // Show detailed results
+    detailedResults.innerHTML = `
+        <h3>Resultado Detalhado (${results.correctCount}/${results.totalQuestions} corretas)</h3>
+        <div class="results-summary">
+            ${results.detailedResults.map(result => `
+                <div class="result-item ${result.isCorrect ? 'correct' : 'incorrect'}">
+                    <div class="result-header">
+                        <span class="question-number">Questão ${result.questionNumber}</span>
+                        <span class="result-status">
+                            <i class="fas ${result.isCorrect ? 'fa-check' : 'fa-times'}"></i>
+                            ${result.isCorrect ? 'Correto' : 'Incorreto'}
+                        </span>
+                    </div>
+                    <div class="result-details">
+                        <p><strong>Pergunta:</strong> ${result.question}</p>
+                        <p><strong>Sua resposta:</strong> ${result.userAnswer}</p>
+                        <p><strong>Resposta correta:</strong> ${result.correctAnswer}</p>
+                        ${result.explanation ? `<p><strong>Explicação:</strong> ${result.explanation}</p>` : ''}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
 }
 
-function restartTest() {
-    currentUser = null;
-    currentQuestionIndex = 0;
-    userAnswers = [];
-    testStartTime = null;
+function displayPreviousResults(results) {
+    finalScore.textContent = `${results.score}%`;
+    scoreMessage.textContent = 'Você já realizou esta prova anteriormente.';
+    testDuration.textContent = `Tempo utilizado: ${results.duration} minutos`;
     
-    document.getElementById('login-form').reset();
-    showScreen('login-screen');
+    detailedResults.innerHTML = `
+        <h3>Resultado Anterior (${results.correctCount}/${results.totalQuestions} corretas)</h3>
+        <p><strong>Realizada em:</strong> ${new Date(results.completedAt).toLocaleString('pt-BR')}</p>
+        <div class="results-summary">
+            ${results.detailedResults.map(result => `
+                <div class="result-item ${result.isCorrect ? 'correct' : 'incorrect'}">
+                    <div class="result-header">
+                        <span class="question-number">Questão ${result.questionNumber}</span>
+                        <span class="result-status">
+                            <i class="fas ${result.isCorrect ? 'fa-check' : 'fa-times'}"></i>
+                            ${result.isCorrect ? 'Correto' : 'Incorreto'}
+                        </span>
+                    </div>
+                    <div class="result-details">
+                        <p><strong>Pergunta:</strong> ${result.question}</p>
+                        <p><strong>Sua resposta:</strong> ${result.userAnswer}</p>
+                        <p><strong>Resposta correta:</strong> ${result.correctAnswer}</p>
+                        ${result.explanation ? `<p><strong>Explicação:</strong> ${result.explanation}</p>` : ''}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
 }
 
-// Admin Dashboard Functions
-function getAdminData() {
-    const results = JSON.parse(localStorage.getItem('testResults') || '[]');
-    return {
-        totalTests: results.length,
-        averageScore: results.length > 0 
-            ? Math.round(results.reduce((sum, r) => sum + r.results.score, 0) / results.length)
-            : 0,
-        results: results.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    };
+function printResults() {
+    window.print();
 }
-
-// Export for admin page
-window.EnglishTestApp = {
-    getAdminData,
-    questions
-};
