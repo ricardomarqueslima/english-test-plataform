@@ -280,11 +280,11 @@ const questions = [
     {
         id: 24,
         type: 'fill-blank',
-        question: "O que o Sr. Tim ouviu debaixo da pilha de folhas no outono? Complete: ______ voice",
-        hint: "Na verdade, foram os amigos dele que ouviram algo. O que era?",
+        question: "O que os amigos do Sr. Tim ouviram quando ele estava escondido na pilha de folhas? Complete: ______ voice",
+        hint: "Os amigos procuraram por ele e finalmente ouviram algo.",
         correctAnswer: "his own",
         options: ["a strange", "his own", "a loud", "a quiet", "a friend's"],
-        explanation: "Correto. O texto diz que os amigos dele 'heard a voice from under the leaves', que era a voz do Sr. Tim dizendo 'I'm here!'",
+        explanation: "Correto. O texto diz que os amigos dele 'heard a voice from under the leaves', que era a voz do próprio Sr. Tim dizendo 'I'm here!'",
         relatedText: "From 'A Colorful Year with Mr. Tim' - Autumn section: He jumped into a big pile of colorful leaves. His friends looked for him for 10 minutes! Finally, they heard a voice from under the leaves: 'I'm here!'"
     },
     {
