@@ -3,79 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prova de Inglês Online - English Test</title>
+    <title>Plataforma de Teste de Inglês</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <div id="app">
-        <!-- Login Screen -->
-        <div id="login-screen" class="screen active">
-            <div class="login-container">
-                <h1><i class="fas fa-graduation-cap"></i> Prova de Inglês Online</h1>
-                <form id="login-form">
-                    <div class="form-group">
-                        <label for="fullName">Nome Completo</label>
-                        <input type="text" id="fullName" required placeholder="Digite seu nome completo">
-                    </div>
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" required placeholder="Digite seu email">
-                    </div>
-                    <button type="submit" class="btn-primary">
-                        <i class="fas fa-sign-in-alt"></i> Iniciar Prova
-                    </button>
-                </form>
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen active">
+        <div class="login-container">
+            <h1><i class="fas fa-graduation-cap"></i> Teste de Inglês</h1>
+            <p class="welcome-text">Bem-vindo à Plataforma de Avaliação de Inglês</p>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="fullName">Nome Completo:</label>
+                    <input type="text" id="fullName" name="fullName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">E-mail:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Fazer Login
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Instructions Screen -->
+    <div id="instructions-screen" class="screen">
+        <div class="instructions-container">
+            <h1><i class="fas fa-exclamation-triangle"></i> Instruções Importantes</h1>
+            
+            <div class="warning-box">
+                <h2><i class="fas fa-clock"></i> Regras da Prova</h2>
+                <ul>
+                    <li><strong>Tempo limite:</strong> Você tem <span class="highlight">2 horas (120 minutos)</span> para completar a prova</li>
+                    <li><strong>Tentativa única:</strong> Você pode fazer a prova <span class="highlight">apenas uma vez</span></li>
+                    <li><strong>Não saia da página:</strong> Se você sair desta página, abrir uma nova janela ou aba, <span class="highlight">a prova será encerrada automaticamente</span></li>
+                    <li><strong>Respostas salvas:</strong> Apenas as respostas que você já respondeu serão consideradas se a prova for encerrada</li>
+                    <li><strong>Não é possível pausar:</strong> O cronômetro não para - mantenha-se focado</li>
+                </ul>
+            </div>
+
+            <div class="test-info">
+                <h2><i class="fas fa-info-circle"></i> Sobre a Prova</h2>
+                <ul>
+                    <li>25 questões sobre gramática, vocabulário e compreensão de texto em inglês</li>
+                    <li>Tipos de questão: múltipla escolha, arrastar e soltar, preencher lacunas</li>
+                    <li>Textos de referência serão fornecidos quando necessário</li>
+                    <li>Você pode navegar entre as questões livremente</li>
+                </ul>
+            </div>
+
+            <div class="confirmation-box">
+                <label class="checkbox-container">
+                    <input type="checkbox" id="understand-rules">
+                    <span class="checkmark"></span>
+                    Eu li e compreendo todas as regras acima
+                </label>
+            </div>
+
+            <div class="instructions-buttons">
+                <button id="back-to-login" class="btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar ao Login
+                </button>
+                <button id="start-test" class="btn-success" disabled>
+                    <i class="fas fa-play"></i> Iniciar Prova
+                </button>
             </div>
         </div>
+    </div>
 
-        <!-- Test Screen -->
-        <div id="test-screen" class="screen">
-            <div class="test-header">
-                <h2>Prova de Inglês</h2>
+    <!-- Test Screen -->
+    <div id="test-screen" class="screen">
+        <div class="test-header">
+            <h2><i class="fas fa-clipboard-list"></i> Teste de Inglês</h2>
+            <div class="timer-container">
+                <i class="fas fa-clock"></i>
+                <span id="timer">02:00:00</span>
+            </div>
+            <div class="progress-container">
                 <div class="progress-bar">
-                    <div class="progress-fill" id="progress-fill"></div>
+                    <div id="progress-fill" class="progress-fill"></div>
                 </div>
-                <span id="progress-text">Questão 1 de 25</span>
-            </div>
-
-            <div class="test-container">
-                <div id="question-container">
-                    <!-- Questions will be dynamically loaded here -->
-                </div>
-                
-                <div class="test-controls">
-                    <button id="prev-btn" class="btn-secondary" disabled>
-                        <i class="fas fa-chevron-left"></i> Anterior
-                    </button>
-                    <button id="next-btn" class="btn-primary">
-                        Próxima <i class="fas fa-chevron-right"></i>
-                    </button>
-                    <button id="finish-btn" class="btn-success" style="display: none;">
-                        <i class="fas fa-check"></i> Concluir Prova
-                    </button>
-                </div>
+                <div id="progress-text" class="progress-text">Questão 1 de 25</div>
             </div>
         </div>
+        
+        <div class="test-container">
+            <div id="question-container">
+                <!-- Questions will be loaded here -->
+            </div>
+            
+            <div class="test-controls">
+                <button id="prev-btn" class="btn-secondary" disabled>
+                    <i class="fas fa-chevron-left"></i> Anterior
+                </button>
+                
+                <button id="next-btn" class="btn-primary">
+                    Próxima <i class="fas fa-chevron-right"></i>
+                </button>
+                
+                <button id="finish-btn" class="btn-success" style="display: none;">
+                    <i class="fas fa-flag-checkered"></i> Finalizar Prova
+                </button>
+            </div>
+        </div>
+    </div>
 
-        <!-- Results Screen -->
-        <div id="results-screen" class="screen">
-            <div class="results-container">
-                <h2><i class="fas fa-trophy"></i> Resultado da Prova</h2>
-                <div class="score-display">
-                    <div class="score-circle">
-                        <span id="final-score">0</span>
-                        <small>/ 25</small>
-                    </div>
-                    <p id="score-message"></p>
-                </div>
-                
-                <div class="detailed-results" id="detailed-results">
-                    <!-- Detailed results will be loaded here -->
-                </div>
-                
-                <button id="restart-btn" class="btn-primary">
-                    <i class="fas fa-redo"></i> Refazer Prova
+    <!-- Results Screen -->
+    <div id="results-screen" class="screen">
+        <div class="results-container">
+            <h1><i class="fas fa-trophy"></i> Resultado da Prova</h1>
+            
+            <div class="score-display">
+                <div class="final-score" id="final-score">85%</div>
+                <div class="score-message" id="score-message">Parabéns! Excelente desempenho!</div>
+                <div class="test-duration" id="test-duration">Tempo utilizado: 45 minutos</div>
+            </div>
+            
+            <div class="detailed-results" id="detailed-results">
+                <!-- Detailed results will be loaded here -->
+            </div>
+            
+            <div class="results-actions">
+                <button id="print-results" class="btn-secondary">
+                    <i class="fas fa-print"></i> Imprimir Resultado
                 </button>
             </div>
         </div>
